@@ -34,7 +34,8 @@ sudo dnf -y install podman podman-compose &&
 systemctl --user enable --now podman.socket &&
 wget https://raw.githubusercontent.com/jlor/portal/main/docker-compose.yaml -P /opt/ &&
 wget https://raw.githubusercontent.com/jlor/portal/main/update.sh -P /opt/ &&
-mkdir /opt/{duplicati,homeassistant,media,mqtt,nzbget,portainer,radarr,sonarr} &&
+mkdir /opt/{duplicati,homeassistant,media,mqtt,nodered,nzbget,portainer,radarr,sonarr} &&
+sudo chcon -Rt svirt_sandbox_file_t /opt /run/user/$(id -u)/podman/podman.sock &&
 cd /opt &&
 sudo firewall-cmd --add-port=9000/tcp --add-port=8123/tcp --add-port=8200/tcp &&
 sudo firewall-cmd --runtime-to-permanent &&
@@ -63,6 +64,13 @@ It is important that the media mount is a single volume, containing both the dow
 
 Keep in mind the entire media folder should be made available to nzbget to make use of hardlinks. See more on [TRaSH's hardlink tutorial](https://trash-guides.info/Hardlinks/How-to-setup-for/Docker/) or the [tutorial at Servarr](https://wiki.servarr.com/docker-guide).
 
+## Auto updating
+If you want to enable auto updating of the OS and containers, add `/opt/update.sh` to roots crontab:
+```
+sudo crontab -u root -l; echo "0 5 * * 6 /opt/update.sh >> /opt/update.log" | sudo crontab -u root -
+```
+This will run the `update.sh` script every Saturday at 5am giving you plenty of time to read changelogs from Home Assistant that are published on the first Wednesday of each month.
+
 ## Containers
 
 ### Portainer
@@ -89,6 +97,15 @@ Restart HomeAssistant from UI -> Settings -> System -> Top right "Restart".
 Once restarted, go to Settings -> Integrations -> Add Integration -> Search for `HACS` and add it. Follow on screen directions.
 
 #### MQTT
+Setup password for MQTT:
+```
+podman-compose exec mqtt mosquitto_passwd -b /mosquitto/config/passwd <user> <password>
+```
+
+Delete user: 
+```
+podman-compose exec mqtt mosquitto_passwd -D /mosquitto/config/passwd <user>
+```
 
 ### NZB stack
 
@@ -99,6 +116,10 @@ Once restarted, go to Settings -> Integrations -> Add Integration -> Search for 
 #### Sonarr
 
 ## Improvements
-Look into Fedora CoreOS or SilverBlue.
+- Look into Fedora CoreOS or SilverBlue.
 
-Alternatively move everything to a kubernetes cluster + helm charts.
+- Alternatively move everything to a kubernetes cluster + helm charts.
+
+- Work with SELinux rather than disable it for the required paths.
+
+  - `sudo chcon -Rt svirt_sandbox_file_t /opt /run/user/$(id -u)/podman/podman.sock` might not be needed.

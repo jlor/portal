@@ -18,7 +18,7 @@ Network: VMNet being routed/controlled by OPNSense
 Running on a virtual host under ESXi.
 
 ## TODO
-- Configure & setup containers
+- Setup log aggregation & visualization
 - Configure & setup 2FA SSH
 
 ## Prerequisites
@@ -29,17 +29,20 @@ Running on a virtual host under ESXi.
 ```
 sudo dnf update && 
 sudo dnf -y upgrade &&
+loginctl enable-linger &&
+sudo mkdir /opt &&
 sudo chown $(id -u) /opt &&
-sudo dnf -y install podman podman-compose &&
-systemctl --user enable --now podman.socket &&
+sudo dnf -y install podman podman-compose cockpit-podman &&
 wget https://raw.githubusercontent.com/jlor/portal/main/docker-compose.yaml -P /opt/ &&
 wget https://raw.githubusercontent.com/jlor/portal/main/update.sh -P /opt/ &&
-mkdir /opt/{duplicati,homeassistant,media,mqtt,nodered,nzbget,portainer,radarr,sonarr} &&
-sudo chcon -Rt svirt_sandbox_file_t /opt /run/user/$(id -u)/podman/podman.sock &&
+sudo semanage fcontext -a -t container_file_t '/opt(/.*)?' &&
+mkdir /opt/{duplicati,homeassistant,media,mqtt,zigbee2mqtt,nzbget,radarr,sonarr} &&
+sudo restorecon -Rv /opt &&
 cd /opt &&
 sudo firewall-cmd --add-port=9000/tcp --add-port=8123/tcp --add-port=8200/tcp &&
 sudo firewall-cmd --runtime-to-permanent &&
-podman-compose up -d
+podman-compose up -d &&
+systemctl enable --user podman-restart.service
 ```
 
 ### Troubleshooting
@@ -47,18 +50,24 @@ In case portainer isn't working correctly, verify your users ID. If it is not `1
 
 
 ### Mounts
+```
 /opt
-  - portainer
-  - duplicati
-  - homeassistant
-  - mqtt
-  - nzbget
-  - radarr
-  - sonarr
-  - media (mounted from single NAS volume)
-    - tmp (keeping temporary downloaded files)
-    - tv
-    - movies
+├── portainer
+├── duplicati
+├── homeassistant
+├── mqtt
+├── nzbget
+├── radarr
+├── sonarr
+└── media (mounted from single NAS volume)
+    ├── tmp (temporary downloaded files)
+    │   ├── completed
+    │   │   ├── movies
+    │   │   └── tv
+    │   └── incomplete (in progress downloads)
+    ├── movies
+    └── tv
+```
 
 It is important that the media mount is a single volume, containing both the download folder and the target folder for media. This way hardlinks can be used which make moving unpacked content instant.
 
@@ -72,10 +81,6 @@ sudo crontab -u root -l; echo "0 5 * * 6 /opt/update.sh >> /opt/update.log" | su
 This will run the `update.sh` script every Saturday at 5am giving you plenty of time to read changelogs from Home Assistant that are published on the first Wednesday of each month.
 
 ## Containers
-
-### Portainer
-Open portainer on port `:9000`, for me that is [http://portal.tm234.lan:9000](http://portal.tm234.lan:9000). Setup a password and configure it to use a "docker" socket.
-
 
 ### Duplicati
 Open Duplicati on port `:8200`, for me that is [http://portal.tm234.lan:8200](http://portal.tm234.lan:8200). Setup a backup for your /source directory with a filter excluding `/media/*` to avoid backing up your media.
@@ -109,11 +114,34 @@ podman-compose exec mqtt mosquitto_passwd -D /mosquitto/config/passwd <user>
 
 ### NZB stack
 
-#### NzbGet
+#### SabNZBd
+Open SabNZBd UI on port `:8080`, for me that is [http://10.0.0.4:8080](http://10.0.0.4:8080). Follow on screen instructions.
+
+NB: Need to use IP to get around the [hostname block of SabNZBd](https://sabnzbd.org/wiki/extra/hostname-check.html).
+
+Depending on how you have setup your NFS mounts, you may need to manually create the complete and incomplete folders and set _very_ wide permissions:
+```
+mkdir /opt/media/tmp/{complete,incomplete}
+sudo chmod 777 /opt/media/tmp/{complete,incomplete}
+```
+
+Remember to setup your folders so:
+```
+Temporary Download Folder: /data/usenet/incomplete
+Completed Download Folder: /data/usenet/completed
+```
+
+And set relative folders for the `movies` and `tv` categories.
 
 #### Radarr
+Add the root folder for `/data/movies` under media management.
+
+Add SabNZBd as download client under `Settings -> Download Clients`. Find the API key from SabNZBd under General in SabNZBd UI.
 
 #### Sonarr
+Add the root folder for `/data/tv` under media management.
+
+Add SabNZBd as download client under `Settings -> Download Clients`. Find the API key from SabNZBd under General in SabNZBd UI.
 
 ## Improvements
 - Look into Fedora CoreOS or SilverBlue.

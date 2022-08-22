@@ -1,27 +1,10 @@
 version: '3.0'
 
 services:
-  portainer:
-    container_name: portainer
-    image: docker.io/portainer/portainer-ce
-    restart: always
-    privileged: true
-    security-opt:
-      - label=disable
-    ports:
-      - "9000:9000/tcp"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Copenhagen
-    volumes:
-      - /run/user/1000/podman/podman.sock:/var/run/docker.sock
-      - /opt/portainer:/data
-
   homeassistant:
     container_name: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:stable"
-    restart: unless-stopped
+    restart: always
     security-opt:
       - label=disable
     ports:
@@ -37,7 +20,7 @@ services:
   mqtt:
     container_name: mqtt
     image: "docker.io/eclipse-mosquitto"
-    restart: unless-stopped
+    restart: always
     security-opt:
       - label=disable
     ports:
@@ -50,25 +33,28 @@ services:
     volumes:
       - /opt/mqtt:/mosquitto
 
-  nodered:
-    container_name: nodered
-    image: "docker.io/nodered/node-red"
-    restart: unless-stopped
-    security-opt:
-      - label=disable
-    ports:
-      - 1880:1880
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Copenhagen
-    volumes:
-      - /opt/nodered:/data
+  # zigbee2mqtt:
+  #   container_name: zigbee2mqtt
+  #   image: docker.io/koenkk/zigbee2mqtt
+  #   restart: always
+  #   security-opt:
+  #     - label=disable
+  #   volumes:
+  #     - /opt/zigbee2mqtt:/app/data
+  #     - /run/udev:/run/udev:ro
+  #   ports:
+  #     # Frontend port
+  #     - 8000:8080
+  #   environment:
+  #     - TZ=Europe/Copenhagen
+  #   devices:
+  #     # Make sure this matched your adapter location
+  #     - /dev/ttyUSB0:/dev/ttyACM0
 
   duplicati:
     container_name: duplicati
     image: "lscr.io/linuxserver/duplicati"
-    restart: unless-stopped
+    restart: always
     security-opt:
       - label=disable
     ports:
@@ -82,4 +68,45 @@ services:
       - /opt/duplicati/config:/config
       - /opt:/source
 
-  
+  radarr:
+    container_name: radarr
+    image: cr.hotio.dev/hotio/radarr:latest
+    restart: always
+    ports:
+      - 8082:7878
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Copenhagen
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/radarr:/config
+      - /opt/media:/data
+  sonarr:
+    container_name: sonarr
+    image: cr.hotio.dev/hotio/sonarr:latest
+    restart: always
+    ports:
+      - 8081:8989
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Copenhagen
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/sonarr:/config
+      - /opt/media:/data
+  sabnzbd:
+    container_name: sabnzbd
+    image: cr.hotio.dev/hotio/sabnzbd:latest
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Copenhagen
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/sabnzbd:/config
+      - /opt/media/tmp:/data/usenet:rw

@@ -17,6 +17,16 @@ Network: VMNet being routed/controlled by OPNSense
 
 Running on a virtual host under ESXi.
 
+## DNS and firewall rules
+Shamelessly stolen from [Matthew Hodgkins](https://hodgkins.io/securing-home-assitant-with-cloudflare)
+- Setup CloudFlare (free)
+  - Setup domain to point to your home IP. Make sure you pick "proxy" here!
+  - Create SSL/TLS certificate in CloudFlare and save the private key in /opt/homeassistant/config/privkey.key and certificate in /opt/homeassistant/config/origin.pem.
+  - Setup CloudFlare firewall (WAF) to only allow your country through to the chosen domain.
+- Setup NAT port forwarding from WAN port 8443 -> IP of your host running the pods, port 8443.
+- Setup your firewall to only allow access from CloudFlares IP addresses.
+
+
 ## TODO
 - Setup log aggregation & visualization
 - Configure & setup 2FA SSH
@@ -32,7 +42,7 @@ sudo dnf -y upgrade &&
 loginctl enable-linger &&
 sudo mkdir /opt &&
 sudo chown $(id -u) /opt &&
-sudo dnf -y install podman podman-compose cockpit-podman &&
+sudo dnf -y install podman podman-compose cockpit-podman google-authenticator &&
 wget https://raw.githubusercontent.com/jlor/portal/main/docker-compose.yaml -P /opt/ &&
 wget https://raw.githubusercontent.com/jlor/portal/main/update.sh -P /opt/ &&
 sudo semanage fcontext -a -t container_file_t '/opt(/.*)?' &&

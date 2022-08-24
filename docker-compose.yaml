@@ -109,4 +109,4 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /opt/sabnzbd:/config
-      - /opt/media/tmp:/data/usenet:rw
+      - /opt/media:/data:rw

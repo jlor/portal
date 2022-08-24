@@ -42,14 +42,16 @@ sudo dnf -y upgrade &&
 loginctl enable-linger &&
 sudo mkdir /opt &&
 sudo chown $(id -u) /opt &&
-sudo dnf -y install podman podman-compose cockpit-podman google-authenticator &&
+sudo dnf -y install podman podman-compose cockpit-podman &&
 wget https://raw.githubusercontent.com/jlor/portal/main/docker-compose.yaml -P /opt/ &&
 wget https://raw.githubusercontent.com/jlor/portal/main/update.sh -P /opt/ &&
 sudo semanage fcontext -a -t container_file_t '/opt(/.*)?' &&
 mkdir /opt/{duplicati,homeassistant,media,mqtt,zigbee2mqtt,nzbget,radarr,sonarr} &&
 sudo restorecon -Rv /opt &&
 cd /opt &&
-sudo firewall-cmd --add-port=9000/tcp --add-port=8123/tcp --add-port=8200/tcp &&
+sudo firewall-cmd --add-port=9090/tcp --add-port=8433/tcp --add-port=8200/tcp &&
+sudo firewall-cmd --add-port=8080/tcp --add-port=8081/tcp --add-port=8082/tcp &&
+sudo firewall-cmd --add-port=1883 --add-port=9001 &&
 sudo firewall-cmd --runtime-to-permanent &&
 podman-compose up -d &&
 systemctl enable --user podman-restart.service
@@ -137,8 +139,8 @@ sudo chmod 777 /opt/media/tmp/{complete,incomplete}
 
 Remember to setup your folders so:
 ```
-Temporary Download Folder: /data/usenet/incomplete
-Completed Download Folder: /data/usenet/completed
+Temporary Download Folder: /data/tmp/incomplete
+Completed Download Folder: /data/tmp/completed
 ```
 
 And set relative folders for the `movies` and `tv` categories.

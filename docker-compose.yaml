@@ -1,12 +1,48 @@
 version: '3.0'
 
 services:
+
+  omada-controller:
+    container_name: omada-controller
+    image: "docker.io/mbentley/omada-controller:latest"
+    restart: always
+    security-opt:
+      - label=disable
+    labels:
+      - io.containers.autoupdate=registry
+    ports:
+      - 8088:8088
+      - 8043:8043
+      - 8843:8843
+      - 29810:29810/udp
+      - 29811:29811
+      - 29812:29812
+      - 29813:29813
+      - 29814:29814
+    environment:
+      - MANAGE_HTTP_PORT=8088
+      - MANAGE_HTTPS_PORT=8043
+      - PGID=1000
+      - PUID=1000
+      - PORTAL_HTTP_PORT=8088
+      - PORTAL_HTTPS_PORT=8843
+      - SHOW_SERVER_LOGS=true
+      - SHOW_MONGODB_LOGS=false
+      - SSL_CERT_NAME=tls.crt
+      - SSL_KEY_NAME=tls.key
+      - TZ=Europe/Copenhagen
+    volumes:
+      - /opt/omada/data:/opt/tplink/EAPController/data
+      - /opt/omada/logs:/opt/tplink/EAPController/logs
+
   homeassistant:
     container_name: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:stable"
     restart: always
     security-opt:
       - label=disable
+    labels:
+      - io.containers.autoupdate=registry
     ports:
       - 8443:8443
     environment:
@@ -15,7 +51,39 @@ services:
       - TZ=Europe/Copenhagen
     volumes:
       - /opt/homeassistant/config:/config
+      - /opt/media/cameras:/config/cameras
       - /etc/localtime:/etc/localtime:ro
+
+  frigate:
+    container_name: frigate
+    privileged: true
+    image: "docker.io/blakeblackshear/frigate:stable-amd64"
+    restart: always
+    shm_size: 256mb
+    security-opt:
+      - label=disable
+    labels:
+      - io.containers.autoupdate=registry
+      - run.oci.keep_original_groups=1
+    group_add:
+      - keep-groups
+    ports:
+      - 5000:5000
+      - 1935:1935
+    environment:
+      - FRIGATE_RTSP_PASSWORD=password
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/frigate/config.yml:/config/config.yml
+      - /opt/media/cameras:/media/frigate
+      - /dev/bus/usb/004/003:/dev/bus/usb/004/003
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+
 
   mqtt:
     container_name: mqtt
@@ -23,6 +91,8 @@ services:
     restart: always
     security-opt:
       - label=disable
+    labels:
+      - io.containers.autoupdate=registry
     ports:
       - 1883:1883
       - 9001:9001
@@ -33,30 +103,38 @@ services:
     volumes:
       - /opt/mqtt:/mosquitto
 
-  # zigbee2mqtt:
-  #   container_name: zigbee2mqtt
-  #   image: docker.io/koenkk/zigbee2mqtt
-  #   restart: always
-  #   security-opt:
-  #     - label=disable
-  #   volumes:
-  #     - /opt/zigbee2mqtt:/app/data
-  #     - /run/udev:/run/udev:ro
-  #   ports:
-  #     # Frontend port
-  #     - 8000:8080
-  #   environment:
-  #     - TZ=Europe/Copenhagen
-  #   devices:
-  #     # Make sure this matched your adapter location
-  #     - /dev/ttyUSB0:/dev/ttyACM0
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    image: docker.io/koenkk/zigbee2mqtt:latest
+    restart: always
+    privileged: true
+    security-opt:
+      - label=disable
+    labels:
+      - io.containers.autoupdate=registry
+      - run.oci.keep_original_groups=1
+    group_add:
+      - keep-groups
+    volumes:
+      - /opt/zigbee2mqtt:/app/data
+      - /run/udev:/run/udev:ro
+      - /dev/ttyUSB.CC2531-01:/dev/ttyUSB.CC2531-01
+    ports:
+      # Frontend port
+      - 8000:8080
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Copenhagen
 
   duplicati:
     container_name: duplicati
-    image: "lscr.io/linuxserver/duplicati"
+    image: "lscr.io/linuxserver/duplicati:latest"
     restart: always
     security-opt:
       - label=disable
+    labels:
+      - io.containers.autoupdate=registry
     ports:
       - 8200:8200
     environment:
@@ -72,6 +150,8 @@ services:
     container_name: radarr
     image: cr.hotio.dev/hotio/radarr:latest
     restart: always
+    labels:
+      - io.containers.autoupdate=registry
     ports:
       - 8082:7878
     environment:
@@ -86,6 +166,8 @@ services:
     container_name: sonarr
     image: cr.hotio.dev/hotio/sonarr:latest
     restart: always
+    labels:
+      - io.containers.autoupdate=registry
     ports:
       - 8081:8989
     environment:
@@ -100,6 +182,8 @@ services:
     container_name: sabnzbd
     image: cr.hotio.dev/hotio/sabnzbd:latest
     restart: always
+    labels:
+      - io.containers.autoupdate=registry
     ports:
       - 8080:8080
     environment:
@@ -110,3 +194,4 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /opt/sabnzbd:/config
       - /opt/media:/data:rw
+      

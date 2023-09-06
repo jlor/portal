@@ -159,6 +159,7 @@ Add SabNZBd as download client under `Settings -> Download Clients`. Find the AP
 - Look into Fedora CoreOS or SilverBlue.
 
 - Alternatively move everything to a kubernetes cluster + helm charts.
+  - Will move to https://github.com/x00-sh/k8s-prod
 
 - Work with SELinux rather than disable it for the required paths.
 
